@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <!--edge浏览器H5兼容设置-->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!--360浏览器H5兼容设置-->
+    <meta name="renderer" content="webkit" />
+    <title>电脑商城</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!--导入核心文件-->
+    <script src="../bootstrap3/js/holder.js"></script>
+    <link href="../bootstrap3/css/bootstrap.css" rel="stylesheet" type="text/css">
+    <script src="../bootstrap3/jquery-1.9.1.min.js"></script>
+    <script src="../bootstrap3/js/bootstrap.js"></script>
+    <!-- 字体图标 -->
+    <link rel="stylesheet" href="../bootstrap3/font-awesome-4.7.0/css/font-awesome.css" />
+    <link rel="stylesheet" type="text/css" href="../css/layout.css" />
+    <link rel="stylesheet" type="text/css" href="../css/top.css" />
+    <link rel="stylesheet" type="text/css" href="../css/footer.css" />
+
+    <script type="text/javascript">
+            //value属性表示当前这个区域的code值
+            let defaultOption = "<option value='0'>---- 请选择 ----</optionvalue>"
+
+            $(document).ready(function () {
+                showThisUserAddress();
+                showProvinceList();
+                //设置默认的”请选择“的值作为控件的默认值
+                $("#province-list").append(defaultOption);
+                $("#area-list").append(defaultOption);
+                $("#city-list").append(defaultOption);
+            });
+
+            //省的下拉列表数据展示
+            function showProvinceList(){
+                $.ajax({
+                    url: "/districts",
+                    type: "POST",
+                    data: "parent=86",
+                    dataType: "JSON",
+                    success: function (json) {
+                        if (json.state === 200) {
+                            let list = json.data;
+                            for (let i = 0; i < list.length;i++){
+                                let opt =
+                                    "<option value='"+list[i].code+"'>"+list[i].name+"</option>"
+                                $("#province-list").append(opt);
+                                console.log(opt);
+                            }
+                        } else {
+                            alert("省/直辖区信息加载失败！");
+                        }
+                    }
+                });
+            }
+
+            /**
+             * change函数用于监听某个控件是否发生改变，一旦发生就会触发
+             * 需要传递一个function(){}
+             */
+            function getcity(){
+                //先获取行政区父代码
+                let parent = $("#province-list").val();
+                console.log($("#province-list").val());
+                //清空select下拉列表中的所有option元素
+                $("#city-list").empty();
+                $("#area-list").empty();
+                //再填充默认值
+                $("#city-list").append(defaultOption);
+                $("#area-list").append(defaultOption);
+
+                if(parent === 0){
+                    return;
+                }
+
+                $.ajax({
+                    url:"/districts",
+                    type:"GET",
+                    data:"parent="+parent,
+                    dataType:"JSON",
+                    success:function (json) {
+                        if (json.state === 200) {
+                            let list = json.data;
+                            for (let i = 0; i < list.length;i++){
+                                let opt =
+                                    "<option value='"+list[i].code+"'>"+list[i].name+"</option>"
+                                $("#city-list").append(opt);
+                            }
+                        } else {
+                            alert("城市信息加载失败！");
+                        }
+                    }
+                });
+            }
+
+            function getarea(){
+                let parent = $("#city-list").val();
+                //清空select下拉列表中的所有option元素
+                $("#area-list").empty();
+                //再填充默认值
+                $("#area-list").append(defaultOption);
+
+                if(parent === 0){
+                    return;
+                }
+
+                $.ajax({
+                    url:"/districts",
+                    type:"GET",
+                    data:"parent="+parent,
+                    dataType:"JSON",
+                    success:function (json) {
+                        if (json.state === 200) {
+                            let list = json.data;
+                            for (let i = 0; i < list.length;i++){
+                                let opt =
+                                    "<option value='"+list[i].code+"'>"+list[i].name+"</option>"
+                                $("#area-list").append(opt);
+                            }
+                        } else {
+                            alert("区县信息加载失败！");
+                        }
+                    }
+                });
+            }
+
+            //给重置信息按钮绑定单击事件
+            function ResetInfo(){
+                //发一次ajax请求，重新赋值所有内容
+                showThisUserAddress();
+            }
+
+            //给修改按钮绑定单击事件
+            function UpdateAddress(cga){
+
+                console.log($("updateAddress"));
+                //判断手机号和收货人是否为空
+                let name = $("#consigneesName").val();
+                let phone = $("#phone").val();
+                if (phone === "" || name === ""){
+                    $("#error-msg").html("请先填写需要修改的信息！");
+                    return false;
+                }
+                $.ajax({
+                    url : "/addresses/"+cga+"/change_address",
+                    type: "post",
+                    data: $("#form-update-address").serialize(), //获取表单的所有内容
+                    dataType: "json",
+                    success: function () {
+                        alert("修改成功！")
+                        location.href = "address.html"
+                    },
+                    error: function () {
+                        alert("服务器出现故障，修改失败，请等待攻城狮修复！！")
+                    }
+                })
+            }
+
+            function showThisUserAddress(){
+                //接收上一个页面传来的连接
+                var hrefUrl = location.href;
+                //以url中的"="为截断点，形成一个数组
+                var param = hrefUrl.split("=")
+                //decodeURI解码得到想要的参数
+                var aid = decodeURI(param[1]);
+                document.getElementById("updateAddress").setAttribute("onclick", "UpdateAddress(" + aid + ")");
+                console.log(aid);
+                //在页面加载完成时自动发送此ajax请求并填充表单
+                $.ajax({
+                    url: "/addresses/queryOneAddress",
+                    type: "get",
+                    data: "aid=" + aid,
+                    dataType: "json",
+                    success:function (res) {
+                        let address = res.data
+                        let provinceStr = "<option value="+ address.provinceCode + ">"+ address.provinceName + "</option>"
+                        let cityStr = "<option value="+ address.cityCode + ">" + address.cityName + "</option>"
+                        let areaStr = "<option value="+ address.areaCode + ">" + address.areaName + "</option>"
+                        //设置id和收货人姓名
+                        $("#aid").val(address.aid)
+                        $("#consigneesName").val(address.name)
+                        //设置省市区
+                        $("#province-list").append(provinceStr)
+                        $("#city-list").append(cityStr)
+                        $("#area-list").append(areaStr)
+                        //设置邮政编码、地址、手机、固话、地址类型
+                        $("#zip").val(address.zip)
+                        $("#address").val(address.address)
+                        $("#phone").val(address.phone)
+                        $("#tel").val(address.tel)
+                        $("#tag").val(address.tag)
+                    }
+                })
+            }
+    </script>
+</head>
+
+<body>
+<!--头部开始-->
+<div class="header"></div>
+<!--头部结束-->
+
+<!--中间导航条开始 -->
+<div class="middleNavigation"></div>
+<!--中间导航条结束-->
+
+<div class="container">
+    <div class="col-md-2">
+        <!--左侧导航开始-->
+        <div class="panel-group" id="accordion">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <!--主选项：我的订单-->
+                    <p class="panel-title">
+                        <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne">我的订单</a>
+                    </p>
+                </div>
+                <div id="collapseOne" class="panel-collapse collapse">
+                    <div class="panel-body">
+                        <div><a href="orders.html">全部订单</a></div>
+                        <div><a href="orders.html">待付款</a></div>
+                        <div><a href="orders.html">待收货</a></div>
+                        <div><a href="orders.html">待评价</a></div>
+                        <div><a href="orders.html">退货退款</a></div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <!--主选项：资料修改-->
+                    <p class="panel-title">
+                        <a data-toggle="collapse" data-parent="#accordion" href="#collapseTwo">资料修改</a>
+                    </p>
+                </div>
+                <div id="collapseTwo" class="panel-collapse collapse in">
+                    <div class="panel-body">
+                        <div><a href="password.html">修改密码</a></div>
+                        <div><a href="userdata.html">个人资料</a></div>
+                        <div><a href="upload.html">上传头像</a></div>
+                        <div><a href="address.html"><b>收货管理</b></a></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--左侧导航结束-->
+    </div>
+    <div class="col-md-10">
+        <div class="panel panel-default">
+            <ul class="nav nav-tabs">
+                <li><a href="password.html">修改密码</a></li>
+                <li><a href="userdata.html">个人资料</a></li>
+                <li><a href="upload.html">上传头像</a></li>
+                <li class="active"><a href="#">收货管理</a></li>
+            </ul>
+            <div class="panel-body">
+                <!--修改收货地址表单开始-->
+                <form id="form-update-address" class="form-horizontal" role="form">
+                    <div class="form-group">
+                        <label class="col-md-2 control-label"></label>
+                        <label class="col-md-4 control-label" style="color: red;font-size: larger">修改地址</label>
+                        <label class="col-md-2 control-label"></label>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-2 control-label"><span class="txtred">*</span>收货人：</label>
+                        <div class="col-md-8">
+                            <input id="aid" name="aid" hidden="hidden" />
+                            <input id="consigneesName" name="name" type="text" class="form-control" placeholder="请输入收货人姓名">
+                        </div>
+                    </div>
+                    <div class="address_content" data-toggle="distpicker">
+                        <div class="form-group">
+                            <label class="col-md-2 control-label"><span class="txtred">*</span>省/直辖市：</label>
+                            <div class="col-md-3">
+                                <select id="province-list" onchange="getcity()" name="provinceCode" class="form-control" data-province="---- 选择省 ----"></select>
+                            </div>
+                            <label class="col-md-2 control-label"><span class="txtred">*</span>城市：</label>
+                            <div class="col-md-3">
+                                <select id="city-list" onchange="getarea()" name="cityCode" class="form-control" data-city="---- 选择市 ----"></select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-2 control-label"><span class="txtred">*</span>区县：</label>
+                            <div class="col-md-3">
+                                <select id="area-list" name="areaCode" class="form-control" data-district="---- 选择区 ----"></select>
+                            </div>
+                            <label class="col-md-2 control-label">邮政编码：</label>
+                            <div class="col-md-3">
+                                <input id="zip" name="zip" type="text" class="form-control" placeholder="请输入邮政编码">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-2 control-label"><span class="txtred">*</span>详细地址：</label>
+                        <div class="col-md-8">
+                            <textarea id="address" name="address" class="form-control" rows="3" placeholder="输入详细的收货地址，小区名称、门牌号等"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-2 control-label"><span class="txtred">*</span>手机：</label>
+                        <div class="col-md-3">
+                            <input id="phone" name="phone" type="text" class="form-control" placeholder="请输入手机号码">
+                        </div>
+                        <label class="col-md-2 control-label">固话：</label>
+                        <div class="col-md-3">
+                            <input id="tel" name="tel" type="text" class="form-control" placeholder="请输入固定电话号码">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-2 control-label">地址类型：</label>
+                        <div class="col-md-8">
+                            <input id="tag" name="tag" type="text" class="form-control" placeholder="请输入地址类型，如：家、公司或者学校">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-2 control-label"><a href="address.html">返回</a>&nbsp;&nbsp;&nbsp;</label>
+                        <div class="col-sm-10">
+                            <input id="updateAddress" onclick="UpdateAddress(#{aid})" type="button" class="col-md-1 btn btn-primary" value="修改" />
+                            <input id="resetInfo" onclick="ResetInfo()" type="reset" class="col-md-offset-1 col-md-2 btn btn-primary" value="恢复原地址信息" />
+                            <div id="error-msg" class="pull-left" style="color: red;font-weight:bold;padding-left: 15px;padding-top: 5px" ></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<!--页脚开始-->
+
+<div class="clearfix"></div>
+<!--页脚开始-->
+<div class="footer"></div>
+<!--页脚结束-->
+
+</body>
+
+</html>
